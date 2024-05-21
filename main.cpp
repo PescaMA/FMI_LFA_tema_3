@@ -11,31 +11,24 @@ protected:
     std::map<std::string,std::set<std::string> > productions;
     std::string startNonTerminal;
 
-
-};
-/*
-void trim(std::string& s){
-    size_t i;
-    for(i = 0; i < s.size() ;i++){
-        if(s[i] != ' ')
-            break;
-    s.erase(s.begin(),i);
-
-    for(i = s.size()-1; i > 0 ;i--){
-        if(s[i] != ' ')
-            break;
+public:
+    void clear(){
+        productions.clear();
+        startNonTerminal = "";
     }
-    s.erase(s.begin() + i,s.end());
-}*/
-/// context-free grammar in Chomsky normal form
+};
 
 class ChomskyException : public std::exception{
+    int pos;
     std::string msg;
     public:
-    ChomskyException(std::string msg):msg(msg){}
-    const char* what(){return msg.c_str();}
+    ChomskyException(int pos,std::string msg):pos(pos),msg(msg){}
+    std::string what(){
+        return (msg + " at index " + std::to_string(pos));
+    }
 };
 
+/// context-free grammar in Chomsky normal form
 class ChomskyCFG : public CFG{
 
     struct Info{
@@ -55,6 +48,7 @@ class ChomskyCFG : public CFG{
         void setLeftProduction(){
             leftProduction = getProduction();
         }
+        int getI()const{return static_cast<int>(i);}
         const std::string& getLeftProduction() const {return leftProduction;}
         void setStartOfProduction(){start = i;}
 
@@ -73,7 +67,7 @@ class ChomskyCFG : public CFG{
 
 
         if(!isalpha(info.getVal()))
-            throw ChomskyException("A production doesn't start with a letter!");
+            throw ChomskyException(info.getI(),"A production doesn't start with a letter!");
 
         if(islower(info.getVal())){
             info++;
@@ -86,7 +80,7 @@ class ChomskyCFG : public CFG{
                 info++;
 
             if(!info.inString() || !isupper(info.getVal()))
-                throw ChomskyException("A production has only one nonTerminal!");
+                throw ChomskyException(info.getI(),"A production has only one nonTerminal!");
             info++;
 
             while(info.inString() && isdigit(info.getVal()))
@@ -97,7 +91,7 @@ class ChomskyCFG : public CFG{
         updateProductions(info);
 
         if(info.inString() && info.getVal() != '|')
-            throw ChomskyException("Production not separated correctly!");
+            throw ChomskyException(info.getI(),"Production not separated correctly!");
 
         info++;
         checkChomskyProduction(info);
@@ -105,44 +99,63 @@ class ChomskyCFG : public CFG{
 
 
 public:
-    void checkChomsky(std::string line){
-
-        try{
+    void addChomsky(std::string line){
         Info info(line);
 
         if(!isupper(info.getVal()))
-            throw ChomskyException("Production not starting with non-terminal!");
+            throw ChomskyException(info.getI(),"Production not starting with non-terminal!");
         info++;
 
         while(info.inString() && isdigit(info.getVal()))
             info++;
 
         info.setLeftProduction();
+        if(startNonTerminal == "")
+            startNonTerminal = info.getProduction();
+
 
         if(!info.inString() || info.getVal() != '-')
-            throw ChomskyException("No arrow (-) given!");
+            throw ChomskyException(info.getI(),"No arrow (-) given!");
         info++;
         if(!info.inString() || info.getVal() != '>')
-            throw ChomskyException("No arrow (>) given!");
+            throw ChomskyException(info.getI(),"No arrow (>) given!");
         info++;
 
         if(!info.inString() || !isalpha(info.getVal()))
-            throw ChomskyException("No productions given!");
+            throw ChomskyException(info.getI(),"No productions given!");
 
         checkChomskyProduction(info);
+
+    }
+
+
+    bool accept(std::string word){
+        return false;
+    }
+    friend std::istream& operator>>(std::istream& in, ChomskyCFG ccfg){
+        /// FORMAT: line count n, then n lines. First line is the start.
+
+        int n;
+        in >> n;
+        in.get();
+        ccfg.clear();
+        try{
+            while(n--){
+                std::string test;
+                getline(in,test);
+
+                ccfg.addChomsky(test);
+            }
         }catch(ChomskyException& error){
             std::cerr << error.what() << '\n';
         }
-
-    }
-    bool accept(std::string word){
-        return false;
+        return in;
     }
 };
 
 int main(){
-    std::string test;
-    getline(std::cin,test);
+
+
     ChomskyCFG cf;
-    cf.checkChomsky(test);
+    std::cin>>cf;
 }
