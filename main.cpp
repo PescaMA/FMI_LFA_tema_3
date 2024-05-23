@@ -2,19 +2,35 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
-#include <map>
-#include <set>
+#include <unordered_map>
+#include <unordered_set>
 
 /// context-free grammar
 class CFG{
 protected:
-    std::map<std::string,std::set<std::string> > productions;
+    static const char LAMBDA = '@';
+    std::unordered_map<std::string,std::unordered_set<std::string> > productions;
+    /// non-terminal -> {set of productions}.
     std::string startNonTerminal;
 
 public:
+    bool isEmpty()const{return productions.empty();}
     void clear(){
         productions.clear();
         startNonTerminal = "";
+    }
+    friend std::ostream& operator<<(std::ostream& out,const CFG& cfg){
+        if(cfg.isEmpty())
+            return out << "Grammar is empty!\n";
+
+        out << "The start symbol is " << cfg.startNonTerminal;
+        for(auto &productionSet:cfg.productions){
+            out << "\n" << productionSet.first << " -> ";
+            for(std::string production: productionSet.second){
+                out << " | " << production;
+            }
+        }
+        return out;
     }
 };
 
@@ -66,14 +82,18 @@ class ChomskyCFG : public CFG{
         info.setStartOfProduction();
 
 
-        if(!isalpha(info.getVal()))
+        if(!isalpha(info.getVal()) && info.getVal()!=LAMBDA)
             throw ChomskyException(info.getI(),"A production doesn't start with a letter!");
 
+        if(info.getVal() == LAMBDA)
+            info++;
+        else
         if(islower(info.getVal())){
             info++;
             while(info.inString() && isdigit(info.getVal()))
                 info++;
         }
+        else
         if(isupper(info.getVal())){
             info++;
             while(info.inString() && isdigit(info.getVal()))
@@ -85,8 +105,6 @@ class ChomskyCFG : public CFG{
 
             while(info.inString() && isdigit(info.getVal()))
                 info++;
-
-
         }
         updateProductions(info);
 
@@ -121,7 +139,7 @@ public:
             throw ChomskyException(info.getI(),"No arrow (>) given!");
         info++;
 
-        if(!info.inString() || !isalpha(info.getVal()))
+        if(!info.inString() || (!isalpha(info.getVal()) && info.getVal() != LAMBDA ))
             throw ChomskyException(info.getI(),"No productions given!");
 
         checkChomskyProduction(info);
@@ -130,9 +148,21 @@ public:
 
 
     bool accept(std::string word){
-        return false;
+        if(isEmpty())
+            return false;
+        std::vector< std::vector< std::unordered_set<std::string> > > reachable;
+
+        int n = word.size();
+        std::unordered_map<std::string,std::unordered_set<std::string> > reverseProductions;
+        for(auto &productionSet : productions){
+            for(std::string production : productionSet.second){
+                 reverseProductions[production].insert(productionSet.first);
+            }
+        }
+        ///for(int i=0;i<n;i++)
+
     }
-    friend std::istream& operator>>(std::istream& in, ChomskyCFG ccfg){
+    friend std::istream& operator>>(std::istream& in, ChomskyCFG& ccfg){
         /// FORMAT: line count n, then n lines. First line is the start.
 
         int n;
@@ -143,11 +173,11 @@ public:
             while(n--){
                 std::string test;
                 getline(in,test);
-
                 ccfg.addChomsky(test);
             }
         }catch(ChomskyException& error){
             std::cerr << error.what() << '\n';
+            ccfg.clear();
         }
         return in;
     }
@@ -157,5 +187,12 @@ int main(){
 
 
     ChomskyCFG cf;
-    std::cin>>cf;
+    std::cin  >> cf;
+    std::cout << cf;
+    /*
+    3
+S -> AB | AA | c
+B -> b
+A -> @ | BA
+*/
 }
