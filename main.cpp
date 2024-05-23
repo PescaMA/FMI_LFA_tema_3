@@ -75,7 +75,7 @@ class ChomskyCFG : public CFG{
     void updateProductions(const Info& info){
         productions[info.getLeftProduction()].insert(info.getProduction());
     }
-    void checkChomskyProduction(Info& info){
+    void parseChomskyProduction(Info& info){
         if(!info.inString())
             return;
 
@@ -112,7 +112,7 @@ class ChomskyCFG : public CFG{
             throw ChomskyException(info.getI(),"Production not separated correctly!");
 
         info++;
-        checkChomskyProduction(info);
+        parseChomskyProduction(info);
     }
 
 
@@ -142,7 +142,7 @@ public:
         if(!info.inString() || (!isalpha(info.getVal()) && info.getVal() != LAMBDA ))
             throw ChomskyException(info.getI(),"No productions given!");
 
-        checkChomskyProduction(info);
+        parseChomskyProduction(info);
 
     }
 
@@ -150,17 +150,46 @@ public:
     bool accept(std::string word){
         if(isEmpty())
             return false;
-        std::vector< std::vector< std::unordered_set<std::string> > > reachable;
-
         int n = word.size();
+
         std::unordered_map<std::string,std::unordered_set<std::string> > reverseProductions;
         for(auto &productionSet : productions){
             for(std::string production : productionSet.second){
                  reverseProductions[production].insert(productionSet.first);
             }
         }
-        ///for(int i=0;i<n;i++)
+        std::vector< std::vector< std::unordered_set<std::string> > > reachable(n);
 
+        reachable[0].resize(n);
+        for(int i = 0;i<n;i++){
+            if(reverseProductions.find(std::string(1,word[i])) != reverseProductions.end())
+                reachable[0][i] = reverseProductions[std::string(1,word[i])];
+        }
+
+
+        /// learned from https://www.youtube.com/watch?v=VTH1k-xiswM&ab_channel=EducationAboutStuff
+        for(int i=1;i<n;i++){
+            reachable[i].resize(n-i);
+            /// i+1 = the amount of letters being processed.
+            for(int m = 0;m< n - i;m++){
+                /// m + 1 = the current window of size i + 1.
+                /// example: for i+1 = 2, m+1 = 2, and word = abcde, we will have ab, bc, cd, de.
+
+                for(int j = 0;j<i;j++){
+                    /// j+i = the part where the word is split into [0,j] and [j+1,i].
+                    /// example: abcd can be obtained as a + bcd, ab + cd, abc + d.
+                    for(std::string leftReachable : reachable[i-j-1][m]){
+                        for(std::string rightReachable : reachable[j][m+i-j]){
+                            if(reverseProductions.find(leftReachable+rightReachable) != reverseProductions.end())
+                                for(std::string crossReachable : reverseProductions[leftReachable+rightReachable]){
+                                    reachable[i][m].insert(crossReachable);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return reachable[n-1][0].find(startNonTerminal) != reachable[n-1][0].end();
     }
     friend std::istream& operator>>(std::istream& in, ChomskyCFG& ccfg){
         /// FORMAT: line count n, then n lines. First line is the start.
@@ -188,11 +217,13 @@ int main(){
 
     ChomskyCFG cf;
     std::cin  >> cf;
-    std::cout << cf;
+    ///std::cout << cf;
+    std::cout << cf.accept("baaba");
     /*
-    3
-S -> AB | AA | c
-B -> b
-A -> @ | BA
+4
+S-> AB | BC
+A -> BA | a
+B -> CC | b
+C -> AB | a
 */
 }
