@@ -1,0 +1,13 @@
+4
+1 1 a $ A
+1 1 a A AA
+1 2 b A @
+2 2 b A @
+
+5
+aaaabbbb
+aabbb
+cab
+aaab
+ab
+

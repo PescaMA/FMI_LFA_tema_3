@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <queue>
 #include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
@@ -212,9 +213,99 @@ public:
     }
 };
 
+
+class PDA{
+    /// acceptance by empty stack.
+    /// DOES NOT HAVE LAMBDA TRANSITIONS! problem qn -> qn with lambda,A/AA could be an infinite loop that adds A to the stack.
+
+
+    int startState = -999;
+    static const char stackStartSymbol = '$';
+    static const char LAMBDA = '@';
+
+    std::unordered_map<int, std::unordered_map<char,std::vector<std::tuple<int,char,std::string> > > > transitions;
+    /// transition[from_state][symbol]= vector({to_state,stackRemove,stackAdd});
+
+    public:
+    bool readAccept(std::istream& in){
+        std::string word;
+        in >> word;
+        return accept(word);
+    }
+    bool accept(std::string word){
+
+       struct Configuration{
+           int state;
+           size_t i; /// i is position in word
+           std::string stk;
+       };
+       std::queue<Configuration> possibilities;
+       possibilities.push({startState,0,std::string(1,stackStartSymbol)});
+
+       while(!possibilities.empty()){
+
+            Configuration conf = possibilities.front();
+            int state = conf.state;
+            size_t i = conf.i;
+            std::string stk = conf.stk;
+            possibilities.pop();
+
+            if(i == word.size()){
+                if(stk.empty())
+                    return true;
+                continue;
+            }
+
+            for(auto transition : transitions[state][word[i]]){
+
+                int to_state = std::get<0>(transition);
+                char stackRemove = std::get<1>(transition);
+                std::string stackAdd = std::get<2>(transition);
+                if(stackRemove != stk.back())
+                    continue;
+
+                if(stackAdd == std::string(1,LAMBDA))
+                    possibilities.push({to_state,i+1,stk.substr(0,stk.size()-1)});
+                else
+                    possibilities.push({to_state,i+1,stk.substr(0,stk.size()-1) + stackAdd});
+            }
+       }
+        return false;
+    }
+
+    std::istream& read(std::istream& in){
+        int n;
+        in >> n;
+        while(n--){
+            int qs,qf;
+            in >> qs >> qf;
+            if(startState == -999)
+                startState = qs;
+            char letter, stackRemove;
+            std::string stackAdd;
+            in >> letter >> stackRemove >> stackAdd;
+
+            transitions[qs][letter].push_back(std::tuple<int,char,std::string>(qf,stackRemove,stackAdd));
+
+        }
+        return in;
+    }
+    friend std::istream& operator>>(std::istream& in,PDA& pda){
+        return pda.read(in);
+    }
+};
+
 int main(){
-
-
+    PDA p;
+    std::ifstream fin("input.in");
+    std::ofstream fout("input.out");
+    fin >> p;
+    int q;
+    fin >> q;
+    while(q--){
+        fout << p.readAccept(fin) << '\n';
+    }
+/*
     ChomskyCFG cf;
     std::cin  >> cf;
     ///std::cout << cf;

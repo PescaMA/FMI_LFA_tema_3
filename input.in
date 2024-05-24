@@ -1,0 +1,33 @@
+18
+1 1 a $ A
+1 1 b $ B
+1 1 c $ C
+
+1 1 a A AA
+1 1 a B BA
+1 1 a C CA
+
+1 1 b A AB
+1 1 b B BB
+1 1 b C CB
+
+1 1 c A AC
+1 1 c B BC
+1 1 c C CC
+
+1 2 a A @
+1 2 b B @
+1 2 c C @
+
+2 2 a A @
+2 2 b B @
+2 2 c C @
+
+6
+aaacbbaaa
+ab
+aaaa
+bbb
+bbcabaabacbb
+aabcaabv
+
