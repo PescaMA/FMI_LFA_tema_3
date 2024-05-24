@@ -295,26 +295,136 @@ class PDA{
     }
 };
 
-int main(){
+/// finite states transducer
+class FST{
+///nu exista lambda
+
+int startState = -999;
+std::unordered_map< int, std::unordered_map<char, std::vector<std::pair<int,std::string> > > > transitions;
+std::unordered_set<int> finalStates;
+
+public:
+    std::vector<std::string> translate(std::string word){
+        std::vector<std::string> result;
+        if(word.empty()) /// special case
+            return result;
+
+        struct Configuration{
+           int state;
+           size_t i; /// i is position in word
+           std::string word;
+       };
+
+        std::queue<Configuration> q;
+        /// state, index, result;
+        q.push({startState,0,""});
+
+        while(!q.empty()){
+
+            int state = q.front().state;
+            unsigned int i = q.front().i;
+            std::string traducedWord = q.front().word;
+
+            q.pop();
+
+            if(i == word.size()){/// reached the end of the word. Finish or backtrack
+                if(finalStates.find(state) != finalStates.end())
+                    result.push_back(traducedWord);
+                continue;
+            }
+
+            for(auto &transition : transitions[state][word[i]]){
+                int to_state = transition.first;
+                std::string langB = transition.second;
+
+                q.push({to_state,i+1,traducedWord + langB});
+            }
+
+        }
+        return result;
+    }
+
+
+    std::istream& read(std::istream& in){
+        int n;
+        in >> n;
+        while(n--){
+            int qs,qf;
+            in >> qs >> qf;
+            if(startState == -999)
+                startState = qs;
+            char letter;
+            std::string langB;
+            in >> letter >> langB ;
+
+            transitions[qs][letter].push_back(std::pair<int,std::string>(qf,langB));
+
+        }
+        in >> n; /// final states count
+        while(n--){
+            int fin;
+            in >> fin;
+            finalStates.insert(fin);
+        }
+        return in;
+    }
+    friend std::istream& operator>>(std::istream& in,FST& fst){
+        return fst.read(in);
+    }
+};
+
+template <class T>
+void printVec(std::ostream& out, std::vector<T> v){
+    if(v.empty())
+        out << "Empty!";
+    for(T el : v)
+        out << el << ' ';
+    out << '\n';
+}
+void test1(){
+    std::ifstream fin("input1.in");
+    std::ofstream fout("input1.out");
+    ChomskyCFG cf;
+    fin  >> cf;
+    int q;
+    fin >> q;
+    ///std::cout << cf;
+    while(q--){
+        std::string s;
+        fin >> s;
+        fout << cf.accept(s) << '\n';
+    }
+
+}
+void test2(){
     PDA p;
-    std::ifstream fin("input.in");
-    std::ofstream fout("input.out");
+    std::ifstream fin("input2.in");
+    std::ofstream fout("input2.out");
     fin >> p;
     int q;
     fin >> q;
     while(q--){
         fout << p.readAccept(fin) << '\n';
     }
-/*
-    ChomskyCFG cf;
-    std::cin  >> cf;
-    ///std::cout << cf;
-    std::cout << cf.accept("baaba");
-    /*
-4
-S-> AB | BC
-A -> BA | a
-B -> CC | b
-C -> AB | a
-*/
+}
+void test3(){
+    std::ifstream fin("input3.in");
+    std::ofstream fout("input3.out");
+    FST fst;
+    fin >> fst;
+    int q;
+    fin >> q;
+    while(q--){
+        std::string s;
+        fin >> s;
+        printVec(fout,fst.translate(s));
+    }
+
+}
+
+
+int main(){
+    test1();
+    test2();
+    test3();
 }

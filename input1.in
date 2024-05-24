@@ -1,0 +1,8 @@
+4
+S-> AB | BC
+A -> BA | a
+B -> CC | b
+C -> AB | a
+
+1
+baaba
